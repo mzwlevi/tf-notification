@@ -1,49 +1,30 @@
-name: TestFlight Watcher
+name: Auto Run Check Script
 
 on:
   schedule:
-    # 每 5 分钟运行一次（UTC 时间）
+    # 每 5 分钟触发一次（注意：GitHub Actions 高峰期可能会有几分钟延迟）
     - cron: '*/5 * * * *'
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch: # 支持在 GitHub 页面手动点击触发测试
 
 jobs:
-  check:
+  run-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # 防止脚本卡住
-    
+
     steps:
-      - name: Checkout
+      # 1. 拉取仓库代码
+      - name: Checkout repository code
         uses: actions/checkout@v4
 
+      # 2. 配置 Python 环境（可以根据需要修改 Python 版本）
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
-      - name: Install dependencies
-        run: pip install requests
+      # 3. 安装依赖（如果 check.py 用到了第三方库，取消下面两行的注释并确保仓库内有 requirements.txt）
+      # - name: Install dependencies
+      #   run: pip install -r requirements.txt
 
-      - name: Restore state from cache
-        id: cache-restore
-        uses: actions/cache@v4
-        with:
-          path: tf_state.json
-          key: tf-state-cache
-          restore-keys: |
-            tf-state-cache
-
-      - name: Run checker
-        env:
-          BARK_KEY: ${{ secrets.BARK_KEY }}
-          # 如果用自己的 Bark 服务器，取消注释并填入
-          # BARK_SERVER: ${{ secrets.BARK_SERVER }}
+      # 4. 执行你的 check.py 脚本
+      - name: Run check.py
         run: python check.py
-
-      - name: Save state to cache
-        if: always()  # 即使检查失败也保存状态
-        uses: actions/cache@v4
-        with:
-          path: tf_state.json
-          key: tf-state-cache
-          restore-keys: |
-            tf-state-cache
