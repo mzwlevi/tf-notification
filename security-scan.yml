@@ -1,0 +1,24 @@
+name: Security Scan
+
+on:
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史
+
+      - name: Run security check
+        run: |
+          echo "🔍 扫描硬编码密钥..."
+          grep -rn "BARK_KEY\s*=\s*['\"]" . --exclude-dir=.git || echo "✅ 未发现"
+          echo ""
+          echo "🔍 扫描 .env 文件..."
+          find . -name "*.env" -not -path "./.git/*" | head -5
+          echo ""
+          echo "🔍 检查 .gitignore..."
+          cat .gitignore 2>/dev/null || echo "⚠️ 未找到 .gitignore"
