@@ -102,7 +102,7 @@ def save_state(state: dict):
 
 def main():
     print("开始检查 TestFlight 状态...")
-    old_state = load_state()
+    old_state = {}
     new_state = {}
 
     for beta in BETAS:
