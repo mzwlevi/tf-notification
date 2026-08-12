@@ -10,7 +10,6 @@ from pathlib import Path
 BETAS = [
     {"id": "VCIvwk2g", "name": "QuantumultX"},
     {"id": "E338vEDz", "name": "Lettera"},
-    {"id": "rnalqGZv", "name": "Bear"},
 ]
 
 BARK_KEY = os.getenv("BARK_KEY", "")
