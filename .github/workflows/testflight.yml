@@ -1,30 +1,45 @@
-name: Auto Run Check Script
+name: Check TestFlight Status
 
 on:
   schedule:
-    # 每 5 分钟触发一次（注意：GitHub Actions 高峰期可能会有几分钟延迟）
+    # 每 5 分钟运行一次（GitHub 在高峰期可能存在数分钟延迟）
     - cron: '*/5 * * * *'
-  workflow_dispatch: # 支持在 GitHub 页面手动点击触发测试
+  workflow_dispatch: # 支持手动触发测试
 
 jobs:
-  run-check:
+  check-tf:
     runs-on: ubuntu-latest
 
+    # 赋予 GITHUB_TOKEN 写权限，用于将 tf_state.json 提交回仓库
+    permissions:
+      contents: write
+
     steps:
-      # 1. 拉取仓库代码
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      # 2. 配置 Python 环境（可以根据需要修改 Python 版本）
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 3. 安装依赖（如果 check.py 用到了第三方库，取消下面两行的注释并确保仓库内有 requirements.txt）
-      # - name: Install dependencies
-      #   run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
 
-      # 4. 执行你的 check.py 脚本
       - name: Run check.py
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+          # 如果你有自定义的 BARK_SERVER，也可以顺便配置，没有就不用管
+          # BARK_SERVER: ${{ secrets.BARK_SERVER }}
         run: python check.py
+
+      # 自动把更新后的 tf_state.json 提交回仓库，解决重复推送问题
+      - name: Commit and push tf_state.json
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add tf_state.json
+          git commit -m "update TestFlight state [skip ci]" || exit 0
+          git push
