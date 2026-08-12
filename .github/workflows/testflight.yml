@@ -9,6 +9,8 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # 防止脚本卡住
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,23 +23,24 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Restore previous state
-        uses: actions/cache@v4
+      - name: Download previous state
+        uses: actions/download-artifact@v4
         with:
-          path: tf_state.json
-          key: tf-state-${{ github.run_id }}
-          restore-keys: |
-            tf-state-
+          name: tf-state
+          path: .
+        continue-on-error: true  # 首次运行没有 artifact，允许失败
 
       - name: Run checker
         env:
           BARK_KEY: ${{ secrets.BARK_KEY }}
-          # 如果用自己的 Bark 服务器，取消下面注释并填入
+          # 如果用自己的 Bark 服务器，取消注释并填入
           # BARK_SERVER: ${{ secrets.BARK_SERVER }}
         run: python check.py
 
-      - name: Save state
-        uses: actions/cache@v4
+      - name: Upload state
+        if: always()  # 即使检查失败也保存状态
+        uses: actions/upload-artifact@v4
         with:
+          name: tf-state
           path: tf_state.json
-          key: tf-state-${{ github.run_id }}
+          retention-days: 1  # 只保留1天，节省空间
