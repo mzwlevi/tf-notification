@@ -10,7 +10,6 @@ from pathlib import Path
 BETAS = [
     {"id": "VCIvwk2g", "name": "QuantumultX"},
     {"id": "E338vEDz", "name": "Lettera"},
-    {"id": "myFEz6DW", "name": "CounterUps"},
 ]
 
 BARK_KEY = os.getenv("BARK_KEY", "")
@@ -102,7 +101,7 @@ def save_state(state: dict):
 
 def main():
     print("开始检查 TestFlight 状态...")
-    old_state = {}
+    old_state = load_state()
     new_state = {}
 
     for beta in BETAS:
