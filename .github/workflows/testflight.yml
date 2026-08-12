@@ -2,21 +2,23 @@ name: Check TestFlight Status
 
 on:
   schedule:
-    # 每 5 分钟运行一次（GitHub 在高峰期可能存在数分钟延迟）
     - cron: '*/5 * * * *'
-  workflow_dispatch: # 支持在 GitHub 页面手动点击触发测试
+  workflow_dispatch:
 
 jobs:
   check-tf:
     runs-on: ubuntu-latest
 
-    # 赋予 GITHUB_TOKEN 写权限，用于将 tf_state.json 提交回仓库
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
+
+      # 1. 尝试下载上一次运行留下的 tf_state.json
+      - name: Restore tf_state.json from previous run
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-state
+        continue-on-error: true # 第一次运行时没有产物，忽略错误继续执行
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,15 +33,12 @@ jobs:
       - name: Run check.py
         env:
           BARK_KEY: ${{ secrets.BARK_KEY }}
-          # 如果你有自定义的 BARK_SERVER，也可以顺便配置（选填）
-          # BARK_SERVER: ${{ secrets.BARK_SERVER }}
         run: python check.py
 
-      # 自动将更新后的 tf_state.json 提交回仓库，避免每次重复推送
-      - name: Commit and push tf_state.json
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add -f tf_state.json
-          git commit -m "update TestFlight state [skip ci]" || exit 0
-          git push
+      # 2. 将最新的 tf_state.json 保存为 Artifact，供下一次运行使用
+      - name: Upload tf_state.json as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-state
+          path: tf_state.json
+          overwrite: true
