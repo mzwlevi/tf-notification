@@ -23,12 +23,14 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Download previous state
-        uses: actions/download-artifact@v4
+      - name: Restore state from cache
+        id: cache-restore
+        uses: actions/cache@v4
         with:
-          name: tf-state
-          path: .
-        continue-on-error: true  # 首次运行没有 artifact，允许失败
+          path: tf_state.json
+          key: tf-state-cache
+          restore-keys: |
+            tf-state-cache
 
       - name: Run checker
         env:
@@ -37,10 +39,11 @@ jobs:
           # BARK_SERVER: ${{ secrets.BARK_SERVER }}
         run: python check.py
 
-      - name: Upload state
+      - name: Save state to cache
         if: always()  # 即使检查失败也保存状态
-        uses: actions/upload-artifact@v4
+        uses: actions/cache@v4
         with:
-          name: tf-state
           path: tf_state.json
-          retention-days: 1  # 只保留1天，节省空间
+          key: tf-state-cache
+          restore-keys: |
+            tf-state-cache
