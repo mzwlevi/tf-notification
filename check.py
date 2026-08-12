@@ -10,7 +10,7 @@ from pathlib import Path
 BETAS = [
     {"id": "VCIvwk2g", "name": "QuantumultX"},
     {"id": "E338vEDz", "name": "Lettera"},
-    {"id": "myFEz6DW", "name": "未知App"},
+    {"id": "myFEz6DW", "name": "CounterUps"},
 ]
 
 BARK_KEY = os.getenv("BARK_KEY", "")
@@ -38,7 +38,7 @@ def check_status(tf_id: str) -> str:
         resp = requests.get(url, headers=headers, timeout=15)
         text = resp.text
 
-        # 1. 优先判断「已满」
+        # 1. 已满
         full_keywords = [
             "This beta is full",
             "此 Beta 版本的测试员已满",
@@ -49,7 +49,7 @@ def check_status(tf_id: str) -> str:
             if kw in text:
                 return "full"
 
-        # 2. 判断「不接受新测试员」（closed）
+        # 2. 不接受新测试员
         closed_keywords = [
             "This beta isn't accepting any new testers right now",
             "This beta isn’t accepting any new testers right now",
@@ -63,19 +63,20 @@ def check_status(tf_id: str) -> str:
             if kw in text:
                 return "closed"
 
-        # 3. 只有明确出现可加入信号，才认为是 open
-        # 注意：不要用太宽泛的词（Accept、View in TestFlight 会出现在说明文字里）
-        open_signals = [
+        # 3. 有空位的特征文案
+        open_keywords = [
+            "To join the",                          # 英文有空位常见文案
+            "open the link on your iPhone",         # 有空位引导
             "Start Testing",
             "开始测试",
-            "Accept & Install",
             "接受并安装",
+            "View in TestFlight",                   # 配合上面使用
         ]
-        for kw in open_signals:
+        for kw in open_keywords:
             if kw in text:
                 return "open"
 
-        # 4. 如果没有匹配到任何状态，默认当作 closed（更安全，避免误报）
+        # 4. 都没匹配到，默认 closed（安全）
         return "closed"
 
     except Exception as e:
