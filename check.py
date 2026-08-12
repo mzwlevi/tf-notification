@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -8,18 +7,14 @@ import requests
 from pathlib import Path
 
 # ====================== 配置区域 ======================
-# 要监控的 TestFlight（ID 或完整链接都行）
 BETAS = [
     {"id": "VCIvwk2g", "name": "QuantumultX"},
     {"id": "E338vEDz", "name": "Lettera"},
-    {"id": "myFEz6DW", "name": "未知App"},   # 你可以改成真实名字
+    {"id": "myFEz6DW", "name": "未知App"},
 ]
 
-# Bark 推送地址（从环境变量读取，不要写死在代码里）
 BARK_KEY = os.getenv("BARK_KEY", "")
 BARK_SERVER = os.getenv("BARK_SERVER", "https://api.day.app")
-
-# 状态文件（用于判断是否“状态变化”）
 STATE_FILE = Path("tf_state.json")
 # ====================================================
 
@@ -35,7 +30,7 @@ def check_status(tf_id: str) -> str:
     """返回 open / full / closed / error"""
     url = f"https://testflight.apple.com/join/{tf_id}"
     headers = {
-        "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
+        "Accept-Language": "en-US,en;q=0.9",
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
     }
 
@@ -43,39 +38,45 @@ def check_status(tf_id: str) -> str:
         resp = requests.get(url, headers=headers, timeout=15)
         text = resp.text
 
-        # 多语言关键词
+        # 1. 优先判断「已满」
         full_keywords = [
             "This beta is full",
             "此 Beta 版本的测试员已满",
             "此Beta版本的测试员已满",
             "测试员已满",
-            "已满",
         ]
+        for kw in full_keywords:
+            if kw in text:
+                return "full"
+
+        # 2. 判断「不接受新测试员」（closed）
         closed_keywords = [
+            "This beta isn't accepting any new testers right now",
+            "This beta isn’t accepting any new testers right now",
             "This beta isn't accepting",
             "This beta isn’t accepting",
             "此 Beta 版本目前不接受",
             "此Beta版本目前不接受",
             "不接受任何新的测试员",
-            "isn't accepting",
-            "isn’t accepting",
         ]
-
-        for kw in full_keywords:
-            if kw in text:
-                return "full"
         for kw in closed_keywords:
             if kw in text:
                 return "closed"
 
-        # 如果页面里有明显的加入按钮相关文字，认为是 open
-        open_keywords = ["Start Testing", "Accept", "开始测试", "接受邀请", "View in TestFlight"]
-        for kw in open_keywords:
+        # 3. 只有明确出现可加入信号，才认为是 open
+        # 注意：不要用太宽泛的词（Accept、View in TestFlight 会出现在说明文字里）
+        open_signals = [
+            "Start Testing",
+            "开始测试",
+            "Accept & Install",
+            "接受并安装",
+        ]
+        for kw in open_signals:
             if kw in text:
                 return "open"
 
-        # 兜底
-        return "open" if "beta" in text.lower() else "error"
+        # 4. 如果没有匹配到任何状态，默认当作 closed（更安全，避免误报）
+        return "closed"
 
     except Exception as e:
         print(f"检查 {tf_id} 失败: {e}")
@@ -97,7 +98,6 @@ def send_bark(title: str, body: str, url: str = None):
         payload["url"] = url
 
     try:
-        # 推荐用 POST JSON 方式
         api = f"{BARK_SERVER.rstrip('/')}/{BARK_KEY}"
         resp = requests.post(api, json=payload, timeout=10)
         print(f"Bark 推送结果: {resp.status_code} - {resp.text}")
@@ -133,7 +133,7 @@ def main():
 
         prev = old_state.get(tf_id)
 
-        # 只有状态变成 open 时才通知（状态变化才通知）
+        # 只有从非 open → open 时才通知
         if status == "open" and prev != "open":
             title = f"🎉 {name} 有空位了！"
             body = f"TestFlight 现在可以加入\nhttps://testflight.apple.com/join/{tf_id}"
