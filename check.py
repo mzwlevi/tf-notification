@@ -36,47 +36,28 @@ def check_status(tf_id: str) -> str:
 
     try:
         resp = requests.get(url, headers=headers, timeout=15)
-        text = resp.text
+        text = resp.text.lower()  # 全部转小写，避免大小写和特殊引号问题
 
         # 1. 已满
-        full_keywords = [
-            "This beta is full",
-            "此 Beta 版本的测试员已满",
-            "此Beta版本的测试员已满",
-            "测试员已满",
-        ]
-        for kw in full_keywords:
-            if kw in text:
-                return "full"
+        if "this beta is full" in text or "测试员已满" in text or "beta 版本的测试员已满" in text:
+            return "full"
 
-        # 2. 不接受新测试员
-        closed_keywords = [
-            "This beta isn't accepting any new testers right now",
-            "This beta isn’t accepting any new testers right now",
-            "This beta isn't accepting",
-            "This beta isn’t accepting",
-            "此 Beta 版本目前不接受",
-            "此Beta版本目前不接受",
-            "不接受任何新的测试员",
-        ]
-        for kw in closed_keywords:
-            if kw in text:
-                return "closed"
+        # 2. 不接受新测试员（最关键）
+        if ("isn't accepting" in text or 
+            "isn’t accepting" in text or 
+            "not accepting" in text or
+            "不接受任何新的测试员" in text or
+            "目前不接受" in text):
+            return "closed"
 
-        # 3. 有空位的特征文案
-        open_keywords = [
-            "To join the",                          # 英文有空位常见文案
-            "open the link on your iPhone",         # 有空位引导
-            "Start Testing",
-            "开始测试",
-            "接受并安装",
-            "View in TestFlight",                   # 配合上面使用
-        ]
-        for kw in open_keywords:
-            if kw in text:
-                return "open"
+        # 3. 有空位的特征（更严格）
+        # 只有出现这些明确引导加入的文案才认为是 open
+        if ("to join the" in text and "open the link on your" in text) or \
+           "start testing" in text or \
+           "开始测试" in text:
+            return "open"
 
-        # 4. 都没匹配到，默认 closed（安全）
+        # 4. 其他情况默认 closed，避免误报
         return "closed"
 
     except Exception as e:
