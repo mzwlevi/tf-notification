@@ -9,7 +9,6 @@ from pathlib import Path
 # ====================== 配置区域 ======================
 BETAS = [
     {"id": "VCIvwk2g", "name": "QuantumultX"},
-    {"id": "E338vEDz", "name": "Lettera"},
 ]
 
 BARK_KEY = os.getenv("BARK_KEY", "")
